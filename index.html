@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8 />
+<title>A simple map</title>
+<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+<script src="bower_components/eventEmitter/EventEmitter.js"></script>
+<script src="bower_components/versal-player-api/index.js"></script>
+<script src='https://api.tiles.mapbox.com/mapbox.js/v2.0.1/mapbox.js'></script>
+<link href='https://api.tiles.mapbox.com/mapbox.js/v2.0.1/mapbox.css' rel='stylesheet' />
+<style>
+  /*body { margin:0; padding:0; }*/
+  #map { 
+  	width:100%; 
+  	height: 400px;
+  }
+  .my-text-area {
+  	width: 99%
+  }
+</style>
+</head>
+<body>
+<textarea class="my-text-area" placeholder="Input a place."></textarea>
+<div id='map' ></div>
+<script type="text/javascript">
+var ACCESS_TOKEN = 'pk.eyJ1Ijoia2VsbGV5IiwiYSI6InpiUEoxUjAifQ.9GK6hhh-9qXQY5j39dzUjQ'
+L.mapbox.accessToken = ACCESS_TOKEN;
+var map = L.mapbox.map('map', 'kelley.j88h438e');//.setView([]);
+
+var player = new VersalPlayerAPI();
+
+  // save a textarea
+  var myTextarea = document.querySelector('.my-text-area');
+  myTextarea.addEventListener('blur', function(){
+    console.log('myTextarea value: ', myTextarea.value);
+    // strip leading and trailing whitespace
+    var apiText = myTextarea.value.replace(/^\s+|\s+$/g,'')
+
+    var geocoder = L.mapbox.geocoder('mapbox.places-v1')
+    geocoder.query(apiText, function showData(err, data) {
+    	console.log(data);
+    	if (data.lbounds) {
+    		map.fitBounds(data.lbounds);
+    		addMarker(data);
+    	} else if (data.latlng) {
+    		map.setView([data.latlng[0], data.latlng[1]], 13);
+    		addMarker(data);
+    	}
+
+    });
+
+    function addMarker(data) {
+    	var bestResult = data.results.features[0]
+    	var titleText = bestResult.text
+    	console.log(titleText)
+    	L.mapbox.featureLayer({
+		    // this feature is in the GeoJSON format: see geojson.org
+		    // for the full specification
+		    type: 'Feature',
+		    geometry: {
+		        type: 'Point',
+		        // coordinates here are in longitude, latitude order because
+		        // x, y is the standard for GeoJSON and many formats
+		        coordinates: [bestResult.center[0], bestResult.center[1]]
+		    },
+		    properties: {
+		        title: titleText,
+		        // description: desc,
+		        // one can customize markers by adding simplestyle properties
+		        // https://www.mapbox.com/foundations/an-open-platform/#simplestyle
+		        'marker-size': 'large',
+		        // 'marker-color': '#BE9A6B',
+		        'marker-symbol': 'star'
+		    }
+		}).addTo(map);
+    }
+
+
+  });
+  player.on('attributesChanged', function(attrs){
+    //restore textarea value
+    if(attrs && attrs.textareaValue) {
+      document.querySelector('.my-text-area').value = attrs.textareaValue;
+    }
+  });
+
+
+  // send this command to receive initial events
+  player.startListening();
+
+  // continuously watch for changes in height (e.g. because of window resizes)
+  player.watchBodyHeight();
+
+</script>
+</body>
+</html>
